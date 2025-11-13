@@ -1,0 +1,14 @@
+.env
+data/*.parquet
+data/**/*.parquet
+*.pyc
+__pycache__/
+.ipynb_checkpoints/
+*.log
+logs/*.log
+.DS_Store
+postgres_data/
+notebooks/.ipynb_checkpoints/
+*.swp
+*.swo
+*~

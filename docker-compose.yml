@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres-nyc-taxi
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=${PG_DB}
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./sql:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER} -d ${PG_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  spark-notebook:
+    image: jupyter/pyspark-notebook:latest
+    container_name: spark-notebook
+    ports:
+      - "8888:8888"
+      - "4040:4040"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/data
+      - ./scripts:/home/jovyan/scripts
+      - ./.env:/home/jovyan/work/.env
+    environment:
+      - SPARK_LOCAL_IP=0.0.0.0
+      - PYSPARK_PYTHON=python
+      - GRANT_SUDO=yes
+      - SPARK_DRIVER_MEMORY=10g
+      - SPARK_EXECUTOR_MEMORY=8g
+      - SPARK_DRIVER_MAXRESULTSIZE=4g
+    env_file:
+      - .env
+    user: root
+    working_dir: /home/jovyan/work
+    mem_limit: 14g
+    memswap_limit: 14g
+    shm_size: 6g
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  obt-builder:
+    build:
+      context: ./obt-builder
+      dockerfile: Dockerfile
+    container_name: obt-builder
+    env_file:
+      - .env
+    volumes:
+      - ./scripts:/app/scripts
+      - ./logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - tools
+
+volumes:
+  postgres_data:
